@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Student Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>Student Dashboard</div>
+    <div><button id="logout">Logout</button></div>
+  </header>
+  <main class="container">
+    <section class="card">
+      <h3>Available Vacancies</h3>
+      <div id="vacWrap">Loading...</div>
+    </section>
+    <section class="card">
+      <h3>Apply to Job</h3>
+      <form id="applyForm">
+        <label>Job ID<input name="job_id" required></label>
+        <label>Resume link<input name="resume_link"></label>
+        <div><button>Apply</button></div>
+        <div id="applyMsg" class="message"></div>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if(!token) window.location='/';
+    document.getElementById('logout').onclick = ()=>{ localStorage.clear(); window.location='/' };
+
+    async function loadVacancies(){
+      const res = await fetch('/student/vacancies', { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const out = document.getElementById('vacWrap');
+      if(!res.ok) { out.textContent = data.error; return; }
+      out.innerHTML = '';
+      data.vacancies.forEach(v=>{
+        const d = document.createElement('div');
+        d.className='list-item';
+        d.innerHTML = `<strong>${v.Title} (JobID: ${v.Job_ID})</strong><div>Positions: ${v.no_of_positions} • Enrolled: ${v.enrolled} • Left: ${v.positions_left}</div>`;
+        out.appendChild(d);
+      });
+    }
+
+    document.getElementById('applyForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/student/apply', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify(body) });
+      const data = await res.json();
+      const msg = document.getElementById('applyMsg');
+      if(!res.ok) { msg.textContent = data.error; msg.classList.add('err'); }
+      else { msg.textContent = data.message || 'Applied'; e.target.reset(); loadVacancies(); }
+    });
+
+    loadVacancies();
+  </script>
+</body>
+</html>

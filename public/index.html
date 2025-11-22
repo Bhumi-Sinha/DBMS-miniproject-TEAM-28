@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Placement Tracker — Login</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <h1>Placement Tracker</h1>
+    <div class="card">
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Username<input name="username" required></label>
+        <label>Password<input name="password" type="password" required></label>
+        <div class="row">
+          <button type="submit">Login</button>
+          <a href="/signup.html" class="link">Sign up</a>
+        </div>
+        <div id="msg" class="message"></div>
+      </form>
+    </div>
+  </main>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(f) });
+      const data = await res.json();
+      const msg = document.getElementById('msg');
+      if (!res.ok) { msg.textContent = data?.error || 'Login failed'; msg.classList.add('err'); return; }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      if (data.user.role === 'admin') window.location = '/admin_dashboard.html';
+      else window.location = '/student_dashboard.html';
+    });
+  </script>
+</body>
+</html>

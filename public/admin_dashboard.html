@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>Admin Dashboard</div>
+    <div>
+      <button id="logout">Logout</button>
+    </div>
+  </header>
+  <main class="container grid2">
+    <section class="card">
+      <h3>Add Student (via stored proc)</h3>
+      <form id="addStudent">
+        <label>SRN<input name="SRN" required></label>
+        <label>First name<input name="First_name" required></label>
+        <label>Last name<input name="Last_name"></label>
+        <label>CGPA<input name="CGPA" type="number" step="0.01"></label>
+        <label>Batch<input name="Batch_year" type="number"></label>
+        <label>Branch
+          <select name="Branch">
+            <option>CSE</option><option>ECE</option><option>AIML</option>
+          </select>
+        </label>
+        <div><button type="submit">Add Student</button></div>
+        <div id="addMsg" class="message"></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3>Jobs overview</h3>
+      <div id="jobsWrap">Loading...</div>
+    </section>
+
+    <section class="card">
+      <h3>Get eligible students for Job ID</h3>
+      <form id="eligibleForm">
+        <label>Job ID<input name="jobId" required></label>
+        <div><button type="submit">Get eligible</button></div>
+      </form>
+      <div id="eligibleRes"></div>
+    </section>
+  </main>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if(!token) window.location='/';
+    document.getElementById('logout').onclick = ()=>{ localStorage.clear(); window.location='/' };
+
+    // Add student
+    document.getElementById('addStudent').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/admin/add-student', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify(body)});
+      const data = await res.json();
+      const msg = document.getElementById('addMsg');
+      if(!res.ok) msg.textContent = data.error || 'Error';
+      else { msg.textContent = data.message || 'Added'; e.target.reset(); loadJobs(); }
+    });
+
+    async function loadJobs(){
+      const el = document.getElementById('jobsWrap');
+      el.textContent = 'Loading...';
+      const res = await fetch('/admin/jobs-overview', { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      if(!res.ok){ el.textContent = data.error; return; }
+      if(!data.jobs || data.jobs.length===0) { el.textContent='No jobs yet'; return; }
+      const ul = document.createElement('div');
+      ul.className='list';
+      data.jobs.forEach(j=>{
+        const d = document.createElement('div');
+        d.className='list-item';
+        d.innerHTML = `<strong>${j.Title}</strong><div>Positions: ${j.no_of_positions} • Enrolled: ${j.enrolled} • Left: ${j.no_of_positions - j.enrolled}</div>
+          <div class="row"><input placeholder="New positions" id="pos_${j.Job_ID}"><button onclick="updateVacancy(${j.Job_ID})">Update</button></div>`;
+        ul.appendChild(d);
+      });
+      el.innerHTML=''; el.appendChild(ul);
+    }
+    window.updateVacancy = async (jobId) => {
+      const val = document.getElementById('pos_'+jobId).value;
+      const res = await fetch('/admin/update-vacancy', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token}, body: JSON.stringify({ job_id: jobId, new_positions: Number(val) })});
+      const data = await res.json();
+      if(!res.ok) alert(data.error); else { alert('Updated'); loadJobs(); }
+    };
+
+    document.getElementById('eligibleForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const jobId = e.target.jobId.value;
+      const res = await fetch('/admin/eligible/'+jobId, { headers:{'Authorization':'Bearer '+token} });
+      const data = await res.json();
+      const out = document.getElementById('eligibleRes');
+      if(!res.ok) { out.textContent = data.error; return; }
+      out.innerHTML = '<pre>'+JSON.stringify(data.eligible, null, 2)+'</pre>';
+    });
+
+    loadJobs();
+  </script>
+</body>
+</html>

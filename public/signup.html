@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Sign up</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <div class="card">
+      <h2>Sign up</h2>
+      <form id="signupForm">
+        <label>Username<input name="username" required></label>
+        <label>Password<input name="password" type="password" required></label>
+        <label>Role
+          <select name="role">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <label>Ref ID (SRN for student / Admin_ID for admin)<input name="ref_id"></label>
+        <div class="row"><button type="submit">Create account</button><a href="/" class="link">Back</a></div>
+        <div id="msg" class="message"></div>
+      </form>
+    </div>
+  </main>
+  <script>
+    document.getElementById('signupForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = Object.fromEntries(new FormData(e.target));
+      const res = await fetch('/auth/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(f) });
+      const data = await res.json();
+      const msg = document.getElementById('msg');
+      if (!res.ok) { msg.textContent = data?.error || 'Signup failed'; msg.classList.add('err'); return; }
+      msg.textContent = 'Account created. Redirecting...';
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setTimeout(()=>{ if(data.user.role==='admin') window.location='/admin_dashboard.html'; else window.location='/student_dashboard.html'; }, 700);
+    });
+  </script>
+</body>
+</html>
